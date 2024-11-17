@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Crypto } from '@/types';
+import { Crypto } from '@/app/types';
 
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
 
