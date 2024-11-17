@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, StarIcon as StarOutline } from '@heroicons/react/24/outline';
+import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, StarIcon as StarOutline, PlusIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import { toast } from 'react-hot-toast';
 import { getCryptoData } from '@/services/crypto';
@@ -73,7 +73,7 @@ export default function Home() {
       try {
         setIsLoading(true);
         const data = await getCryptoData();
-        setCryptos(data);
+        setCryptos(data as unknown as Crypto[]);
       } catch (error) {
         toast.error('Failed to fetch crypto data');
       } finally {
@@ -230,6 +230,132 @@ export default function Home() {
     toast.success('Removed from watchlist');
   };
 
+  const WatchlistDropdown = ({ crypto }: { crypto: Crypto }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleAddToWatchlist = (watchlistId: string) => {
+      addToWatchlist(crypto.id, watchlistId);
+      setIsOpen(false);
+    };
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+        >
+          <PlusIcon className="w-5 h-5" />
+        </button>
+
+        {isOpen && (
+          <div 
+            className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+          >
+            <div className="py-1">
+              {watchlists.map((watchlist) => (
+                <button
+                  key={watchlist.id}
+                  onClick={() => handleAddToWatchlist(watchlist.id)}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {watchlist.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Add this new component near your other components
+  const SearchDropdown = () => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+
+    // Search in global cryptos list
+    const searchResults = cryptos
+      .filter(crypto =>
+        crypto.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        crypto.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .slice(0, 5); // Limit to 5 results
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (isOpen && !(event.target as Element).closest('.search-container')) {
+          setIsOpen(false);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    return (
+      <div className="relative search-container">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search cryptocurrencies..."
+            className="w-full bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setIsOpen(e.target.value.length > 0);
+            }}
+            onFocus={() => setIsOpen(searchQuery.length > 0)}
+          />
+          <svg 
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+
+        {/* Search Results Dropdown */}
+        {isOpen && searchQuery && (
+          <div className="absolute mt-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+            {searchResults.length > 0 ? (
+              searchResults.map(crypto => (
+                <div
+                  key={crypto.id}
+                  className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-3"
+                >
+                  <img src={crypto.image} alt={crypto.name} className="w-8 h-8" />
+                  <div className="flex-grow">
+                    <div className="font-medium">{crypto.name}</div>
+                    <div className="text-sm text-gray-500">{crypto.symbol.toUpperCase()}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">${crypto.current_price.toLocaleString()}</div>
+                    <div className={`text-sm ${
+                      crypto.price_change_percentage_24h >= 0 ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {crypto.price_change_percentage_24h >= 0 ? '↑' : '↓'}
+                      {Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <WatchlistDropdown crypto={crypto} />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-3 text-gray-500 text-center">
+                No results found
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <main className="min-h-screen bg-gray-100 dark:bg-gray-900">
       {/* Tab Navigation */}
@@ -265,23 +391,7 @@ export default function Home() {
 
       {/* Search Bar */}
       <div className="max-w-7xl mx-auto p-4">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search cryptocurrencies..."
-            className="w-full bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <svg 
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
+        <SearchDropdown />
       </div>
 
       {/* Main Content */}
@@ -350,29 +460,7 @@ export default function Home() {
                       </svg>
                     </button>
                   ) : (
-                    <div className="relative group">
-                      <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                        <StarOutline className="w-5 h-5" />
-                      </button>
-                      
-                      {/* Watchlist Dropdown */}
-                      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden invisible group-hover:visible z-10">
-                        {watchlists.map(list => (
-                          <button
-                            key={list.id}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
-                            onClick={() => addToWatchlist(crypto.id, list.id)}
-                          >
-                            Add to {list.name}
-                          </button>
-                        ))}
-                        {watchlists.length === 0 && (
-                          <div className="px-4 py-2 text-gray-500 text-sm">
-                            No watchlists yet
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <WatchlistDropdown crypto={crypto} />
                   )}
                 </div>
               </div>
