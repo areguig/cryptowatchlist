@@ -1,8 +1,8 @@
-import { Crypto } from '@/types';
+import { Crypto } from '@/app/types';
 import Link from 'next/link';
 import { StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { useWatchlists } from '@/hooks/useWatchlists';
+import { useWatchlists } from '@/app/hooks/useWatchlists';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 
